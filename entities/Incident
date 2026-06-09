@@ -1,0 +1,73 @@
+{
+  "name": "Incident",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "severity": {
+      "type": "string",
+      "title": "Severity",
+      "enum": [
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ],
+      "default": "info"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "open",
+        "investigating",
+        "resolved",
+        "closed"
+      ],
+      "default": "open"
+    },
+    "affected_system": {
+      "type": "string",
+      "title": "Affected System",
+      "enum": [
+        "video_feed",
+        "audio_feed",
+        "encoder",
+        "transmitter",
+        "playout",
+        "network",
+        "storage",
+        "other"
+      ],
+      "default": "other"
+    },
+    "assigned_to": {
+      "type": "string",
+      "title": "Assigned To"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "title": "Resolution Notes"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Resolved At"
+    },
+    "related_task_id": {
+      "type": "string",
+      "title": "Related Task ID"
+    }
+  },
+  "required": [
+    "title",
+    "severity",
+    "status"
+  ]
+}

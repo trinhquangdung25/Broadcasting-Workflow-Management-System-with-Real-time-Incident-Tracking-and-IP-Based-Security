@@ -1,0 +1,77 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "backlog",
+        "pre_production",
+        "in_production",
+        "transmission",
+        "post_production",
+        "completed"
+      ],
+      "default": "backlog"
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "category": {
+      "type": "string",
+      "title": "Category",
+      "enum": [
+        "video",
+        "audio",
+        "graphics",
+        "transmission",
+        "encoding",
+        "playout",
+        "other"
+      ],
+      "default": "other"
+    },
+    "assigned_to": {
+      "type": "string",
+      "title": "Assigned To"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Due Date"
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "items": {
+        "type": "string"
+      }
+    },
+    "order": {
+      "type": "number",
+      "title": "Order",
+      "default": 0
+    }
+  },
+  "required": [
+    "title",
+    "status"
+  ]
+}

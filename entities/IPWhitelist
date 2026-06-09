@@ -1,0 +1,39 @@
+{
+  "name": "IPWhitelist",
+  "type": "object",
+  "properties": {
+    "ip_address": {
+      "type": "string",
+      "title": "IP Address"
+    },
+    "label": {
+      "type": "string",
+      "title": "Label"
+    },
+    "department": {
+      "type": "string",
+      "title": "Department",
+      "enum": [
+        "engineering",
+        "production",
+        "transmission",
+        "management",
+        "other"
+      ],
+      "default": "other"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    },
+    "added_by": {
+      "type": "string",
+      "title": "Added By"
+    }
+  },
+  "required": [
+    "ip_address",
+    "label"
+  ]
+}

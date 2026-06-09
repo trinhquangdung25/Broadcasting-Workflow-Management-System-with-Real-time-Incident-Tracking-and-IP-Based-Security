@@ -1,0 +1,44 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "title": "Content"
+    },
+    "channel": {
+      "type": "string",
+      "title": "Channel"
+    },
+    "task_id": {
+      "type": "string",
+      "title": "Task ID"
+    },
+    "incident_id": {
+      "type": "string",
+      "title": "Incident ID"
+    },
+    "author_name": {
+      "type": "string",
+      "title": "Author Name"
+    },
+    "author_email": {
+      "type": "string",
+      "title": "Author Email"
+    },
+    "message_type": {
+      "type": "string",
+      "title": "Message Type",
+      "enum": [
+        "text",
+        "alert",
+        "system"
+      ],
+      "default": "text"
+    }
+  },
+  "required": [
+    "content",
+    "channel"
+  ]
+}
