@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+// 1. Dùng apiClient và useAuth thay cho base44
+import { apiClient } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+
 import { Settings as SettingsIcon, User, Cpu, Shield, Zap, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,24 +16,42 @@ import { toast } from "sonner";
 const DEPARTMENTS = ["engineering", "production", "transmission", "management", "other"];
 
 export default function Settings() {
-  const [user, setUser] = useState(null);
+  // 2. Lấy user từ Context thay vì tự gọi API
+  const { user } = useAuth();
   const [department, setDepartment] = useState("other");
   const [saving, setSaving] = useState(false);
 
+  // Đồng bộ state với data của user khi Context đã load xong
   useEffect(() => {
-    base44.auth.me().then(u => {
-      setUser(u);
-      setDepartment(u.department || "other");
-    }).catch(() => {});
-  }, []);
+    if (user) {
+      setDepartment(user.department || "other");
+    }
+  }, [user]);
 
+  // 3. Hàm lưu thông tin sử dụng REST API (Axios)
   const handleSave = async () => {
     setSaving(true);
-    await base44.auth.updateMe({ department });
-    toast({ title: "Settings saved", description: "Your profile has been updated." });
-    setSaving(false);
+    try {
+      // Gửi request PUT lên Backend Node.js để cập nhật Department
+      await apiClient.put("/auth/profile", { department });
+      
+      toast({ title: "Settings saved", description: "Your profile has been updated." });
+      
+      // Lưu ý: Tuỳ thuộc vào cách bạn code AuthContext sau này, 
+      // bạn có thể gọi hàm cập nhật lại Context ở đây để đồng bộ toàn app.
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      toast({ 
+        title: "Update failed", 
+        description: "There was an error saving your preferences.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // Tránh render lỗi nếu user chưa load kịp
   if (!user) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -48,6 +69,7 @@ export default function Settings() {
         <p className="text-sm text-muted-foreground mt-1">Manage your account preferences</p>
       </div>
 
+      {/* Cấu hình Profile */}
       <Card className="border-none shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -82,7 +104,7 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Methods & Technologies */}
+      {/* Methods & Technologies (Giữ nguyên giao diện tĩnh) */}
       <Card className="border-none shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -117,6 +139,7 @@ export default function Settings() {
   );
 }
 
+// Khai báo tĩnh thông tin về công nghệ của đồ án
 const TECH_STACK = [
   {
     icon: Layers,

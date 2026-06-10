@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+// 1. Import apiClient và socket thay vì base44
+import { apiClient } from "@/api/base44Client";
+import { io } from "socket.io-client";
+
 import { Plus, Search, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +13,9 @@ import StatusBadge from "../components/StatusBadge";
 import IncidentDialog from "../components/incidents/IncidentDialog";
 import IncidentRow from "../components/incidents/IncidentRow";
 
+// Khai báo địa chỉ server Node.js của bạn
+const SOCKET_URL = "http://localhost:5000";
+
 export default function Incidents() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,21 +25,41 @@ export default function Incidents() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editIncident, setEditIncident] = useState(null);
 
+  // 2. Viết lại hàm tải dữ liệu bằng REST API (Axios)
   const loadIncidents = async () => {
-    const data = await base44.entities.Incident.list("-created_date", 100);
-    setIncidents(data);
-    setLoading(false);
+    try {
+      // Gọi GET /api/incidents từ Node.js (Backend tự sắp xếp mới nhất lên đầu)
+      const response = await apiClient.get("/incidents");
+      setIncidents(response.data);
+    } catch (error) {
+      console.error("Error loading incident list:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 3. Khởi tạo dữ liệu và cấu hình Socket.io
   useEffect(() => {
     loadIncidents();
-    const unsub = base44.entities.Incident.subscribe(() => loadIncidents());
-    return unsub;
+
+    // Khởi tạo kết nối Socket kèm Token xác thực
+    const socket = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem("jwt_token") }
+    });
+
+    // Lắng nghe các sự kiện thay đổi dữ liệu từ Backend
+    socket.on("newIncident", loadIncidents);
+    socket.on("incidentUpdated", loadIncidents);
+    socket.on("incidentDeleted", loadIncidents);
+
+    // Ngắt kết nối khi chuyển sang trang khác
+    return () => socket.close();
   }, []);
 
   const handleCreate = () => { setEditIncident(null); setDialogOpen(true); };
   const handleEdit = (inc) => { setEditIncident(inc); setDialogOpen(true); };
 
+  // Logic lọc dữ liệu phía client giữ nguyên
   const filtered = incidents.filter(i => {
     if (search && !i.title?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterSeverity !== "all" && i.severity !== filterSeverity) return false;
@@ -101,11 +127,12 @@ export default function Incidents() {
           </div>
         ) : (
           filtered.map(incident => (
-            <IncidentRow key={incident.id} incident={incident} onEdit={() => handleEdit(incident)} />
+            <IncidentRow key={incident.id || incident._id} incident={incident} onEdit={() => handleEdit(incident)} />
           ))
         )}
       </div>
 
+      {/* Truyền hàm loadIncidents vào onSaved để làm mới danh sách sau khi tạo/sửa thành công */}
       <IncidentDialog open={dialogOpen} onOpenChange={setDialogOpen} incident={editIncident} onSaved={loadIncidents} />
     </div>
   );

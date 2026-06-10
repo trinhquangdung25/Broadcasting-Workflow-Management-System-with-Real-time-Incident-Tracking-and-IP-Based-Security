@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+// 1. Dùng apiClient và socket thay cho base44
+import { apiClient } from "@/api/base44Client"; 
+import { io } from "socket.io-client";
+
 import { Link } from "react-router-dom";
 import {
   Activity, AlertTriangle, CheckCircle, Clock,
@@ -13,20 +16,49 @@ import RecentIncidents from "../components/dashboard/RecentIncidents";
 import StatsCards from "../components/dashboard/StatsCards";
 import WorkflowChart from "../components/dashboard/WorkflowChart";
 
+// Đảm bảo trỏ đúng cổng Backend Node.js của bạn
+const SOCKET_URL = "http://localhost:5000";
+
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    Promise.all([
-      base44.entities.Task.list("-created_date", 100),
-      base44.entities.Incident.list("-created_date", 50),
-    ]).then(([t, i]) => {
-      setTasks(t);
-      setIncidents(i);
+  // 2. Hàm gọi REST API lấy dữ liệu song song
+  const loadDashboardData = async () => {
+    try {
+      // Gọi lên Node.js bằng phương thức GET
+      const [resTasks, resIncidents] = await Promise.all([
+        apiClient.get("/tasks"),       // Lấy danh sách công việc
+        apiClient.get("/incidents")    // Lấy danh sách sự cố
+      ]);
+      
+      setTasks(resTasks.data);
+      setIncidents(resIncidents.data);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
       setLoading(false);
+    }
+  };
+
+  // 3. Khởi tạo dữ liệu và cấu hình Socket.io
+  useEffect(() => {
+    // Tải dữ liệu lần đầu khi vừa vào trang
+    loadDashboardData();
+
+    // Kết nối Socket để nhận thông báo thời gian thực
+    const socket = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem("jwt_token") }
     });
+
+    // Lắng nghe các thay đổi từ Backend để auto-refresh Dashboard
+    socket.on("taskUpdated", () => loadDashboardData());
+    socket.on("newIncident", () => loadDashboardData());
+    socket.on("incidentUpdated", () => loadDashboardData());
+
+    // Dọn dẹp kết nối khi rời khỏi trang Dashboard
+    return () => socket.close();
   }, []);
 
   if (loading) {
@@ -51,6 +83,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Các Component con giao diện giữ nguyên hoàn toàn */}
       <StatsCards tasks={tasks} incidents={incidents} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

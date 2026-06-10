@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+// 1. Dùng apiClient và socket thay cho base44
+import { apiClient } from "@/api/base44Client";
+import { io } from "socket.io-client";
+
 import { Plus, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import KanbanColumn from "../components/kanban/KanbanColumn";
 import TaskDialog from "../components/kanban/TaskDialog";
+
+// Khai báo địa chỉ server Node.js của bạn
+const SOCKET_URL = "http://localhost:5000";
 
 const COLUMNS = [
   { id: "backlog", label: "Backlog", color: "bg-muted-foreground" },
@@ -23,24 +29,61 @@ export default function Kanban() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTask, setEditTask] = useState(null);
 
+  // 2. Viết lại hàm tải dữ liệu bằng REST API (Axios)
   const loadTasks = async () => {
-    const data = await base44.entities.Task.list("order", 200);
-    setTasks(data);
-    setLoading(false);
+    try {
+      // Gọi GET /api/tasks từ Node.js (Backend tự sắp xếp theo thứ tự order)
+      const response = await apiClient.get("/tasks");
+      setTasks(response.data);
+    } catch (error) {
+      console.error("Error loading task list:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 3. Khởi tạo dữ liệu và cấu hình Socket.io
   useEffect(() => {
     loadTasks();
-    const unsub = base44.entities.Task.subscribe(() => loadTasks());
-    return unsub;
+
+    const socket = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem("jwt_token") }
+    });
+
+    // Lắng nghe sự thay đổi từ máy khác để auto-refresh bảng Kanban
+    socket.on("taskCreated", loadTasks);
+    socket.on("taskUpdated", loadTasks);
+    socket.on("taskDeleted", loadTasks);
+
+    return () => socket.close();
   }, []);
 
+  // 4. Xử lý logic khi người dùng kéo thả xong
   const onDragEnd = async (result) => {
     if (!result.destination) return;
-    const { draggableId, destination } = result;
+    
+    const { draggableId, destination, source } = result;
     const newStatus = destination.droppableId;
-    setTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: newStatus } : t));
-    await base44.entities.Task.update(draggableId, { status: newStatus, order: destination.index });
+    const newOrder = destination.index;
+
+    // Tạm thời cập nhật ngay lập tức giao diện (Optimistic UI) cho mượt
+    setTasks(prev => prev.map(t => 
+      t.id === draggableId || t._id === draggableId 
+        ? { ...t, status: newStatus } 
+        : t
+    ));
+
+    try {
+      // Gửi request PUT lên Backend Node.js để lưu vào Database
+      await apiClient.put(`/tasks/${draggableId}`, { 
+        status: newStatus, 
+        order: newOrder 
+      });
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      // Nếu Backend báo lỗi, bạn có thể gọi loadTasks() để hoàn tác lại vị trí cũ
+      loadTasks(); 
+    }
   };
 
   const handleCreate = () => {
@@ -105,6 +148,7 @@ export default function Kanban() {
         </DragDropContext>
       </div>
 
+      {/* Tích hợp hàm onSaved để refresh sau khi Tạo/Sửa Task */}
       <TaskDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
