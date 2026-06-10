@@ -41,7 +41,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/kanban" element={<Kanban />} />
+        <Route path="/workflows" element={<Kanban />} />
         <Route path="/incidents" element={<Incidents />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/security" element={<Security />} />
