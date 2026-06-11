@@ -17,7 +17,7 @@ import {
 import IncidentNotificationBanner from "../components/IncidentNotificationBanner";
 
 // Địa chỉ backend server của bạn
-const SOCKET_URL = "http://localhost:5000";
+const SOCKET_URL = "http://localhost:5001";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
