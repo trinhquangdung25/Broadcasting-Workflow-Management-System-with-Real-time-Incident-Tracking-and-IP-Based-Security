@@ -1,63 +1,118 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Client } from '../api/Client';
+import { useAuth } from '@/lib/AuthContext';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
-const Login = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+export default function Login() {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
-      const response = await Client.post('/auth/login', formData);
-      if (response.data && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data));
-        navigate('/');
-      }
+      await login(email, password);
+      // Đăng nhập thành công sẽ tự điều hướng về Dashboard nhờ ProtectedRoute
+      window.location.href = '/';
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      console.error(err);
+      setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50">
-      <Card className="w-full max-w-md p-4">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Log In to BroadcastHQ</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
-            
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Email Address</label>
-              <Input name="email" type="email" placeholder="name@broadcasthq.com" required onChange={handleChange} />
-            </div>
+    // Toàn bộ màn hình nền xám nhạt, căn giữa khối Login
+    <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4 antialiased">
+      <div className="w-full max-w-md space-y-4">
+        
+        {/* Khối Card bọc ngoài của Shadcn UI */}
+        <Card className="border border-slate-200/80 shadow-xl bg-white rounded-2xl overflow-hidden transition-all duration-300">
+          <CardHeader className="space-y-1.5 pt-8 pb-6 bg-slate-900 text-white text-center">
+            <CardTitle className="text-2xl font-black tracking-tight uppercase">
+              BroadcastHQ
+            </CardTitle>
+            <CardDescription className="text-slate-400 text-xs">
+              Sign in to manage workflows and real-time incidents
+            </CardDescription>
+          </CardHeader>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Password</label>
-              <Input name="password" type="password" placeholder="••••••••" required onChange={handleChange} />
-            </div>
+          <CardContent className="p-6 pt-8">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              
+              {/* Hiển thị thông báo lỗi nếu đăng nhập thất bại */}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs font-semibold text-red-600 animate-shake">
+                  {error}
+                </div>
+              )}
 
-            <Button type="submit" className="w-full mt-2">Log In</Button>
-          </form>
-          <div className="mt-4 text-sm text-center text-slate-600">
-            Don't have an account? <Link to="/register" className="text-blue-600 hover:underline">Sign up</Link>
-          </div>
-        </CardContent>
-      </Card>
+              {/* Ô nhập Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@broadcasthq.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                  required
+                />
+              </div>
+
+              {/* Ô nhập Password */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Password
+                  </Label>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                  required
+                />
+              </div>
+
+              {/* Nút bấm Submit đăng nhập */}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl shadow-md shadow-blue-500/10 transition-all active:scale-[0.98] mt-2"
+              >
+                {loading ? 'Authenticating...' : 'Log In to System'}
+              </Button>
+            </form>
+          </CardContent>
+
+          {/* Phần chân Card điều hướng sang trang Đăng ký */}
+          <CardFooter className="bg-slate-50/50 border-t border-slate-100 p-4 flex justify-center text-xs text-slate-500">
+            Don't have an account?&nbsp;
+            <a href="/register" className="font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors">
+              Sign up
+            </a>
+          </CardFooter>
+        </Card>
+        
+        {/* Bản quyền nhỏ dưới chân trang */}
+        <p className="text-center text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+          © 2026 BroadcastHQ Operations Pipeline
+        </p>
+      </div>
     </div>
   );
-};
-
-export default Login;
+}

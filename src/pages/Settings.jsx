@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 // 1. Dùng apiClient và useAuth thay cho base44
-import { apiClient } from "@/api/Client";
+import { apiClient } from "@/api/apiService";
 import { useAuth } from "@/lib/AuthContext";
 
 import { Settings as SettingsIcon, User, Cpu, Shield, Zap, Layers } from "lucide-react";

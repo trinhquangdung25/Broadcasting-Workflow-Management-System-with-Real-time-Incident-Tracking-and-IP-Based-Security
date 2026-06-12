@@ -5,3 +5,6 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+// THÊM DÒNG NÀY VÀO CUỐI FILE ĐỂ DIỆT TẬN GỐC LỖI STAR EXPORT:
+export default cn;

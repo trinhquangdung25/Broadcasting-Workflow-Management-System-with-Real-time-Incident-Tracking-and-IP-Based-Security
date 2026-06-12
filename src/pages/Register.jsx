@@ -43,7 +43,7 @@ const Register = () => {
     <div className="flex items-center justify-center min-h-screen bg-slate-50">
       <Card className="w-full max-w-md p-4">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Create BroadcastHQ Account</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Create BCO Account</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -51,17 +51,17 @@ const Register = () => {
             
             <div className="space-y-1">
               <label className="text-sm font-medium">Full Name</label>
-              <Input name="name" type="text" placeholder="John Doe" required onChange={handleChange} />
+              <Input name="name" type="text" placeholder="" required onChange={handleChange} />
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium">Email Address</label>
-              <Input name="email" type="email" placeholder="name@broadcasthq.com" required onChange={handleChange} />
+              <Input name="email" type="email" placeholder="name@bco.com" required onChange={handleChange} />
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium">Password</label>
-              <Input name="password" type="password" placeholder="••••••••" required onChange={handleChange} />
+              <Input name="password" type="password" placeholder="" required onChange={handleChange} />
             </div>
 
             <div className="space-y-1">
