@@ -1,58 +1,60 @@
 import React from 'react';
-import StatusBadge from '@/components/StatusBadge';
-import { Button } from '@/components/ui/button';
 
-// Component hiển thị một dòng dữ liệu sự cố trong bảng (Table Row)
-export default function IncidentRow({ incident, onEdit, onDelete }) {
-  // Hàm helper định dạng lại ngày tháng hiển thị cho đẹp
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+export default function IncidentRow({ incident, onClick }) {
+  // Helper lấy màu viền & nền cho Badge Severity
+  const getSeverityStyle = (sev) => {
+    switch (sev?.toLowerCase()) {
+      case 'critical': return 'bg-[#fff1f2] text-[#e11d48] border-[#fecdd3]';
+      case 'error': return 'bg-[#fff7ed] text-[#ea580c] border-[#ffedd5]';
+      case 'warning': return 'bg-[#fffbeb] text-[#d97706] border-[#fde68a]';
+      default: return 'bg-[#eff6ff] text-[#2563eb] border-[#bfdbfe]'; // INFO
+    }
+  };
+
+  // Helper lấy màu viền & nền cho Badge Status
+  const getStatusStyle = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'open': return 'bg-[#fff1f2] text-[#e11d48] border-[#fecdd3]';
+      case 'investigating': return 'bg-[#fffbeb] text-[#d97706] border-[#fde68a]';
+      case 'resolved': return 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]';
+      default: return 'bg-slate-100 text-slate-500 border-slate-200'; // CLOSED
+    }
   };
 
   return (
-    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors duration-150">
-      <td className="p-4 text-sm font-medium text-slate-900 max-w-[200px] truncate">
-        {incident.title}
-      </td>
-      <td className="p-4 text-sm text-slate-500 max-w-[300px] truncate">
-        {incident.description || 'No description available'}
-      </td>
-      <td className="p-4 text-sm text-slate-600 capitalize">
-        {incident.department || 'N/A'}
-      </td>
-      <td className="p-4">
-        {/* Tái sử dụng component StatusBadge chúng ta vừa viết code ở bước trước */}
-        <StatusBadge status={incident.status || 'open'} />
-      </td>
-      <td className="p-4 text-sm text-slate-500">
-        {formatDate(incident.createdAt || incident.timestamp)}
-      </td>
-      <td className="p-4 text-right space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="text-blue-600 border-blue-100 hover:bg-blue-50"
-          onClick={() => onEdit(incident)}
-        >
-          Edit
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-          onClick={() => onDelete(incident._id || incident.id)}
-        >
-          Delete
-        </Button>
-      </td>
-    </tr>
+    <div 
+      onClick={() => onClick(incident)}
+      className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group"
+    >
+      <div className="flex items-start gap-4">
+        {/* Badge Severity bên trái */}
+        <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-md border mt-0.5 shrink-0 ${getSeverityStyle(incident.severity)}`}>
+          {incident.severity}
+        </span>
+        
+        {/* Tiêu đề và Mô tả */}
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">
+            {incident.title}
+          </h4>
+          <p className="text-xs font-medium text-slate-500 line-clamp-1 max-w-2xl">
+            {incident.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Cụm thông tin bên phải (Hệ thống, Status, Thời gian) */}
+      <div className="flex items-center gap-4 shrink-0">
+        <span className="text-[10px] font-bold px-2 py-1 rounded-md border bg-slate-50 text-slate-500 border-slate-200 uppercase tracking-widest">
+          {incident.affectedSystem}
+        </span>
+        <span className={`text-[10px] font-black px-2 py-1 rounded-md border uppercase tracking-widest ${getStatusStyle(incident.status)}`}>
+          {incident.status}
+        </span>
+        <span className="text-[11px] font-semibold text-slate-400 min-w-[80px] text-right">
+          {incident.timeAgo}
+        </span>
+      </div>
+    </div>
   );
 }

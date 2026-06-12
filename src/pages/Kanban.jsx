@@ -1,160 +1,129 @@
-import { useState, useEffect } from "react";
-// 1. Dùng apiClient và socket thay cho base44
-import { apiClient } from "@/api/Client";
-import { io } from "socket.io-client";
-
-import { Plus, Search, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import KanbanColumn from "../components/kanban/KanbanColumn";
-import TaskDialog from "../components/kanban/TaskDialog";
-
-// Khai báo địa chỉ server Node.js của bạn
-const SOCKET_URL = "http://localhost:5000";
+import React, { useState } from 'react';
+import KanbanColumn from '@/components/kanban/KanbanColumn';
+import TaskDialog from '@/components/kanban/TaskDialog';
 
 const COLUMNS = [
-  { id: "backlog", label: "Backlog", color: "bg-muted-foreground" },
-  { id: "pre_production", label: "Pre-Production", color: "bg-purple-500" },
-  { id: "in_production", label: "In Production", color: "bg-blue-500" },
-  { id: "transmission", label: "Transmission", color: "bg-cyan-500" },
-  { id: "post_production", label: "Post-Production", color: "bg-amber-500" },
-  { id: "completed", label: "Completed", color: "bg-green-500" },
+  { id: 'backlog', title: 'BACKLOG', color: 'bg-slate-500' },
+  { id: 'pre-production', title: 'PRE-PRODUCTION', color: 'bg-purple-500' },
+  { id: 'in-production', title: 'IN PRODUCTION', color: 'bg-blue-500' },
+  { id: 'transmission', title: 'TRANSMISSION', color: 'bg-cyan-500' },
+  { id: 'post-production', title: 'POST-PRODUCTION', color: 'bg-yellow-500' },
+  { id: 'completed', title: 'COMPLETED', color: 'bg-emerald-500' },
+];
+
+const INITIAL_TASKS = [
+  { id: '1', title: 'Graphics Package Update', description: 'Update lower thirds and scoreboards for new season branding', status: 'backlog', priority: 'medium', category: 'graphics', assignee: 'designer', dueDate: '2026-06-15' },
+  { id: '2', title: 'Playout Server Migration', description: 'Migrate playout automation to new server cluster', status: 'backlog', priority: 'high', category: 'playout', assignee: 'sysadmin', dueDate: '2026-06-20' },
+  { id: '3', title: 'Audio Sync Calibration', description: 'Calibrate audio delay compensation for live transmission', status: 'pre-production', priority: 'critical', category: 'audio', assignee: 'audio', dueDate: '2026-06-12' },
+  { id: '4', title: 'Configure Main Encoder Settings', description: 'Set up H.264 encoding parameters for primary broadcast feed', status: 'in-production', priority: 'high', category: 'encoding', assignee: 'engineer', dueDate: '2026-06-13' },
+  { id: '5', title: 'Satellite Uplink Test', description: 'Verify signal quality on transponder 4B for weekend coverage', status: 'transmission', priority: 'high', category: 'transmission', assignee: 'tx', dueDate: '2026-06-14' },
 ];
 
 export default function Kanban() {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editTask, setEditTask] = useState(null);
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [editingTask, setEditingTask] = useState(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  
+  // State mới để lưu từ khóa tìm kiếm
+  const [searchQuery, setSearchQuery] = useState(''); 
 
-  // 2. Viết lại hàm tải dữ liệu bằng REST API (Axios)
-  const loadTasks = async () => {
-    try {
-      // Gọi GET /api/tasks từ Node.js (Backend tự sắp xếp theo thứ tự order)
-      const response = await apiClient.get("/tasks");
-      setTasks(response.data);
-    } catch (error) {
-      console.error("Error loading task list:", error);
-    } finally {
-      setLoading(false);
-    }
+  const handleDropTask = (taskId, newStatus) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
   };
 
-  // 3. Khởi tạo dữ liệu và cấu hình Socket.io
-  useEffect(() => {
-    loadTasks();
-
-    const socket = io(SOCKET_URL, {
-      auth: { token: localStorage.getItem("jwt_token") }
-    });
-
-    // Lắng nghe sự thay đổi từ máy khác để auto-refresh bảng Kanban
-    socket.on("taskCreated", loadTasks);
-    socket.on("taskUpdated", loadTasks);
-    socket.on("taskDeleted", loadTasks);
-
-    return () => socket.close();
-  }, []);
-
-  // 4. Xử lý logic khi người dùng kéo thả xong
-  const onDragEnd = async (result) => {
-    if (!result.destination) return;
-    
-    const { draggableId, destination, source } = result;
-    const newStatus = destination.droppableId;
-    const newOrder = destination.index;
-
-    // Tạm thời cập nhật ngay lập tức giao diện (Optimistic UI) cho mượt
-    setTasks(prev => prev.map(t => 
-      t.id === draggableId || t._id === draggableId 
-        ? { ...t, status: newStatus } 
-        : t
-    ));
-
-    try {
-      // Gửi request PUT lên Backend Node.js để lưu vào Database
-      await apiClient.put(`/tasks/${draggableId}`, { 
-        status: newStatus, 
-        order: newOrder 
-      });
-    } catch (error) {
-      console.error("Error updating task status:", error);
-      // Nếu Backend báo lỗi, bạn có thể gọi loadTasks() để hoàn tác lại vị trí cũ
-      loadTasks(); 
-    }
+  const openEditModal = (task) => setEditingTask(task);
+  
+  const saveTask = (updatedTask) => {
+    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    setEditingTask(null);
   };
 
-  const handleCreate = () => {
-    setEditTask(null);
-    setDialogOpen(true);
+  const deleteTask = (taskId) => {
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    setEditingTask(null);
   };
 
-  const handleEdit = (task) => {
-    setEditTask(task);
-    setDialogOpen(true);
+  const handleCreateTask = (newTaskData) => {
+    const newTask = {
+      ...newTaskData,
+      id: Date.now().toString(), 
+    };
+    setTasks(prev => [...prev, newTask]);
+    setIsCreatingTask(false);
   };
 
-  const filtered = tasks.filter(t =>
-    !search || t.title?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  if (loading) {
+  // Logic lọc Task: Kiểm tra xem Title, Description hoặc Category có chứa từ khóa không
+  const filteredTasks = tasks.filter(task => {
+    if (!searchQuery) return true; // Nếu ô search trống thì hiện tất cả
+    const lowerQuery = searchQuery.toLowerCase();
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      </div>
+      task.title.toLowerCase().includes(lowerQuery) ||
+      task.description.toLowerCase().includes(lowerQuery) ||
+      task.category.toLowerCase().includes(lowerQuery)
     );
-  }
+  });
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-6 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Workflows</h1>
-          <p className="text-sm text-muted-foreground mt-1">Drag tasks across stages to update progress</p>
+    <div className="h-full flex flex-col space-y-6">
+      <div className="flex items-end justify-between border-b border-slate-200 pb-4 shrink-0">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Workflows</h1>
+          <p className="text-sm font-medium text-slate-500">Drag tasks across stages to update progress</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search tasks..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 h-9"
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            {/* Bind state searchQuery vào ô Input */}
+            <input 
+              type="text" 
+              placeholder="Search tasks..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500 bg-white shadow-sm w-64 transition-all" 
             />
           </div>
-          <Button onClick={handleCreate} size="sm" className="shrink-0">
-            <Plus className="h-4 w-4 mr-1.5" /> New Task
-          </Button>
+          <button 
+            onClick={() => setIsCreatingTask(true)}
+            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
+          >
+            + New Task
+          </button>
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto px-6 pb-6">
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-4 min-w-max h-full">
-            {COLUMNS.map(col => (
-              <KanbanColumn
-                key={col.id}
-                column={col}
-                tasks={filtered.filter(t => t.status === col.id)}
-                onEdit={handleEdit}
-              />
-            ))}
-          </div>
-        </DragDropContext>
+      <div className="flex-1 overflow-x-auto custom-scrollbar pb-4">
+        <div className="flex gap-6 h-full items-start min-w-max">
+          {COLUMNS.map(col => (
+            <KanbanColumn 
+              key={col.id} 
+              column={col} 
+              // Truyền filteredTasks thay vì tasks nguyên bản vào cột
+              tasks={filteredTasks.filter(t => t.status === col.id)} 
+              onDropTask={handleDropTask}
+              onTaskClick={openEditModal}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Tích hợp hàm onSaved để refresh sau khi Tạo/Sửa Task */}
-      <TaskDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        task={editTask}
-        onSaved={loadTasks}
-      />
+      {editingTask && (
+        <TaskDialog 
+          mode="edit"
+          task={editingTask} 
+          onClose={() => setEditingTask(null)}
+          onSave={saveTask}
+          onDelete={deleteTask}
+        />
+      )}
+
+      {isCreatingTask && (
+        <TaskDialog 
+          mode="create"
+          task={null} 
+          onClose={() => setIsCreatingTask(false)}
+          onSave={handleCreateTask}
+        />
+      )}
     </div>
   );
 }

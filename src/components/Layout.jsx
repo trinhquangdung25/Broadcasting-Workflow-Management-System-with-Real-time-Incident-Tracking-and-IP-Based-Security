@@ -1,164 +1,81 @@
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-// 1. Loại bỏ base44, import apiClient, socket và useAuth
-import { apiClient } from "@/api/base44Client";
-import { io } from "socket.io-client";
-import { useAuth } from "@/lib/AuthContext";
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
-import {
-  LayoutDashboard, Kanban, AlertTriangle, MessageSquare,
-  Shield, Settings, ChevronLeft, ChevronRight, Radio, LogOut, User 
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import IncidentNotificationBanner from "../components/IncidentNotificationBanner";
-
-// Địa chỉ backend server của bạn
-const SOCKET_URL = "http://localhost:5001";
-
-const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/workflows", label: "Workflows", icon: Kanban }, // 2. Đổi từ /kanban thành /workflows
-  { path: "/incidents", label: "Incidents", icon: AlertTriangle },
-  { path: "/chat", label: "Team Chat", icon: MessageSquare },
-  { path: "/security", label: "Security", icon: Shield },
-  { path: "/settings", label: "Settings", icon: Settings }
-];
-
-export default function Layout() {
+export default function Layout({ children }) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
-  const [openIncidents, setOpenIncidents] = useState(0);
 
-  // 3. Lấy thông tin user trực tiếp từ AuthContext
-  const { user } = useAuth(); 
-
-  // 4. Hàm lấy số lượng sự cố chưa xử lý từ MongoDB (REST API)
-  const fetchOpenIncidentsCount = async () => {
-    try {
-      // Endpoint giả định: GET /api/incidents/count/open
-      const response = await apiClient.get("/incidents/count/open");
-      setOpenIncidents(response.data.count);
-    } catch (error) {
-      console.error("Errors get the number of incidents:", error);
-    }
-  };
-
-  useEffect(() => {
-    // Tải số lượng sự cố lần đầu
-    fetchOpenIncidentsCount();
-
-    // Kết nối Socket để lắng nghe thông báo sự cố realtime
-    const socket = io(SOCKET_URL, {
-      auth: { token: localStorage.getItem("jwt_token") }
-    });
-
-    // Cứ khi nào có sự cố mới hoặc sự cố được cập nhật/xóa, ta tự động gọi lại API để cập nhật Badge
-    socket.on("newIncident", fetchOpenIncidentsCount);
-    socket.on("incidentUpdated", fetchOpenIncidentsCount);
-    socket.on("incidentDeleted", fetchOpenIncidentsCount);
-
-    return () => socket.close();
-  }, []);
-
-  // 5. Hàm xử lý Đăng xuất chuẩn MERN Stack
-  const handleLogout = () => {
-    localStorage.removeItem("jwt_token"); // Xóa token đã lưu
-    window.location.href = "/login"; // Chuyển hướng người dùng về trang đăng nhập
-  };
+  const menuItems = [
+    { name: 'Dashboard', path: '/', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
+    { name: 'Workflows', path: '/kanban', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg> },
+    { name: 'Incidents', path: '/incidents', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>, badge: 2 },
+    { name: 'Team Chat', path: '/chat', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+    { name: 'Security', path: '/security', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+    { name: 'Settings', path: '/settings', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+  ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar Menu */}
-      <aside className={`${collapsed ? "w-16" : "w-60"} bg-sidebar flex flex-col border-r border-sidebar-border transition-all duration-300 shrink-0`}>
-        {/* Logo Hệ Thống */}
-        <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-          <Radio className="text-sidebar-primary ml-2 h-6 w-6 shrink-0" />
-          {!collapsed && (
-            <span className="text-sidebar-accent-foreground ml-2 text-2xl font-extrabold tracking-wide">
-              BROADCAST
-            </span>
-          )}
-        </div>
+    <div className="min-h-screen flex text-slate-800 antialiased font-sans bg-[#f8f9fc]">
+      
+      {/* 1. SIDEBAR NAVY */}
+      <aside className="w-[240px] bg-[#111827] flex flex-col justify-between shrink-0 h-screen sticky top-0 z-50">
+        <div>
+          <div className="h-16 flex items-center px-6 gap-3 mb-4">
+            <span className="text-[#3b82f6] font-bold text-xl font-mono">((o))</span>
+            <span className="text-white font-bold text-2xl tracking-tighter">BCO</span>
+          </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-            const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
-            return (
-              <Link
-                key={path}
-                to={path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                  isActive ?
-                  "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" :
-                  "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`}
-              >
-                <Icon className="h-4.5 w-4.5 shrink-0" />
-                {!collapsed && <span className="font-medium">{label}</span>}
-                
-                {/* Số lượng lỗi hiển thị thời gian thực cạnh chữ Incidents */}
-                {!collapsed && label === "Incidents" && openIncidents > 0 && (
-                  <Badge variant="destructive" className="ml-auto h-5 min-w-5 text-[10px] px-1.5 flex items-center justify-center">
-                    {openIncidents}
-                  </Badge>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User Section Dropdown */}
-        <div className="p-3 border-t border-sidebar-border">
-          {user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className={`flex items-center gap-3 w-full px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors ${collapsed ? "justify-center" : ""}`}>
-                  <div className="h-8 w-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center shrink-0">
-                    <User className="h-4 w-4 text-sidebar-primary" />
+          <nav className="px-3 space-y-1">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/dashboard');
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
+                    isActive ? 'bg-[#3b82f6] text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={isActive ? "text-white" : "text-slate-400"}>{item.icon}</span>
+                    <span>{item.name}</span>
                   </div>
-                  {!collapsed && (
-                    <div className="text-left overflow-hidden">
-                      <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{user.full_name || "User"}</p>
-                      <p className="text-[10px] text-sidebar-foreground truncate capitalize">{user.role || "viewer"}</p>
-                    </div>
+                  {item.badge && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center italic">
+                      {item.badge}
+                    </span>
                   )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="/settings">
-                    <Settings className="h-4 w-4 mr-2" /> Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" /> Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Nút Thu Gọn / Mở Rộng Menu */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="h-10 flex items-center justify-center border-t border-sidebar-border text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
+        <div className="p-4 border-t border-slate-800/80 flex items-center gap-3 mt-auto mb-2">
+          <div className="w-8 h-8 rounded-full bg-[#1e3a8a] flex items-center justify-center text-[10px] font-black text-blue-200 border border-blue-500/30">QT</div>
+          <div className="truncate">
+            <p className="text-[12px] font-bold text-slate-200 leading-tight">Quang Dũng Trịnh</p>
+            <p className="text-[10px] text-slate-500 font-medium">admin</p>
+          </div>
+        </div>
       </aside>
 
-      {/* Vùng hiển thị nội dung các trang con */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <IncidentNotificationBanner />
-        <main className="flex-1 overflow-y-auto bg-slate-50/50">
-          <Outlet />
+      {/* 2. MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto custom-scrollbar">
+        
+        {/* BANNER CRITICAL Ở ĐẦU TRANG */}
+        <div className="bg-[#ef4444] text-white px-6 py-2 flex items-center justify-between shadow-lg z-40 sticky top-0">
+          <div className="flex items-center gap-3 text-xs font-black tracking-widest uppercase italic">
+            <span className="animate-pulse">⚠️</span>
+            <span>CRITICAL: Primary Encoder Packet Loss</span>
+          </div>
+          <button className="opacity-70 hover:opacity-100 text-lg">✕</button>
+        </div>
+
+        {/* NỘI DUNG CÁC TRANG CON */}
+        <main className="p-8">
+          <div className="max-w-[1200px] mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

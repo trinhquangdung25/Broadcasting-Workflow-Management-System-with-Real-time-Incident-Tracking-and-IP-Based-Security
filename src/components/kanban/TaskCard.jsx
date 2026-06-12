@@ -1,61 +1,44 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
-// Component hiển thị một thẻ công việc nhỏ bên trong cột Kanban
-export default function TaskCard({ task, onEdit, onDelete }) {
-  
-  // Hàm helper quyết định màu sắc dựa theo mức độ ưu tiên (Priority)
-  const getPriorityBadge = (priority) => {
+export default function TaskCard({ task, onClick }) {
+  const handleDragStart = (e) => { e.dataTransfer.setData('taskId', task.id); };
+
+  const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
-      case 'high':
-      case 'critical':
-        return <Badge className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] px-1.5 py-0">High</Badge>;
-      case 'medium':
-        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0">Medium</Badge>;
-      default:
-        return <Badge className="bg-sky-500 hover:bg-sky-600 text-white text-[10px] px-1.5 py-0">Low</Badge>;
+      case 'critical': return 'text-[#e11d48] bg-[#fff1f2] border-[#fecdd3]';
+      case 'high': return 'text-[#ea580c] bg-[#fff7ed] border-[#ffedd5]';
+      case 'medium': return 'text-[#d97706] bg-[#fffbeb] border-[#fde68a]';
+      default: return 'text-[#2563eb] bg-[#eff6ff] border-[#bfdbfe]';
     }
   };
 
   return (
-    <div className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 group transition-all duration-200 space-y-3">
-      {/* Phần trên cùng: Phòng ban và Độ ưu tiên */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 max-w-[120px] truncate">
-          {task.department || 'General'}
+    <div 
+      draggable
+      onDragStart={handleDragStart}
+      onClick={() => onClick(task)}
+      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:border-blue-300 group"
+    >
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${getPriorityColor(task.priority)}`}>
+          {task.priority}
         </span>
-        {getPriorityBadge(task.priority)}
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+          {task.category}
+        </span>
       </div>
 
-      {/* Phần thân: Tiêu đề và Mô tả */}
-      <div className="space-y-1">
-        <h4 className="text-sm font-semibold text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">
-          {task.title}
-        </h4>
-        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-          {task.description || 'No description provided.'}
-        </p>
-      </div>
+      {/* ĐÃ CHUẨN HÓA FONT TITLE VÀ DESC */}
+      <h4 className="text-sm font-semibold text-slate-900 leading-tight mb-1.5 group-hover:text-blue-600 transition-colors">
+        {task.title}
+      </h4>
+      <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-4">
+        {task.description}
+      </p>
 
-      {/* Phần chân: Các nút điều hướng ẩn, chỉ hiện khi hover */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-          onClick={() => onEdit(task)}
-        >
-          Edit
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-7 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-          onClick={() => onDelete(task._id || task.id)}
-        >
-          Delete
-        </Button>
+      <div className="flex items-center gap-1.5 text-slate-400 border-t border-slate-50 pt-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span className="text-xs font-medium truncate text-slate-500">{task.assignee || 'Unassigned'}</span>
       </div>
     </div>
   );

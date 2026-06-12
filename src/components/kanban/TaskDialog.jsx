@@ -1,154 +1,123 @@
-import { useState, useEffect } from "react";
-// 1. Thay base44 bằng apiClient
-import { apiClient } from "@/api/Client"; 
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import React, { useState, useEffect } from 'react';
 
-const STATUSES = ["backlog", "pre_production", "in_production", "transmission", "post_production", "completed"];
-const PRIORITIES = ["low", "medium", "high", "critical"];
-const CATEGORIES = ["video", "audio", "graphics", "transmission", "encoding", "playout", "other"];
-
-export default function TaskDialog({ open, onOpenChange, task, onSaved }) {
-  const [form, setForm] = useState({
-    title: "", description: "", status: "backlog", priority: "medium",
-    category: "other", assigned_to: "", due_date: ""
-  });
-  const [saving, setSaving] = useState(false);
+export default function TaskDialog({ task, onClose, onSave, onDelete, mode = 'edit' }) {
+  // Nếu là tạo mới thì các trường trống, nếu là edit thì lấy dữ liệu task cũ
+  const [formData, setFormData] = useState(
+    task || {
+      title: '',
+      description: '',
+      status: 'backlog',
+      priority: 'medium',
+      category: 'other',
+      dueDate: '',
+      assignee: ''
+    }
+  );
 
   useEffect(() => {
-    if (task) {
-      setForm({
-        title: task.title || "",
-        description: task.description || "",
-        status: task.status || "backlog",
-        priority: task.priority || "medium",
-        category: task.category || "other",
-        assigned_to: task.assigned_to || "",
-        // Xử lý cắt chuỗi ngày tháng để tránh lỗi hiển thị trên thẻ <input type="date">
-        due_date: task.due_date ? task.due_date.substring(0, 10) : "",
-      });
-    } else {
-      setForm({ title: "", description: "", status: "backlog", priority: "medium", category: "other", assigned_to: "", due_date: "" });
-    }
-  }, [task, open]);
+    if (task) setFormData({ ...task });
+  }, [task]);
 
-  // 2. Chuyển đổi hàm Tạo & Cập nhật sang REST API
-  const handleSave = async () => {
-    if (!form.title.trim()) return;
-    setSaving(true);
-    
-    // Lấy ID linh hoạt (tương thích cả ID cũ và _id của MongoDB)
-    const taskId = task?.id || task?._id;
-
-    try {
-      if (task) {
-        // Gọi API Node.js: PUT /api/tasks/:id
-        await apiClient.put(`/tasks/${taskId}`, form);
-      } else {
-        // Gọi API Node.js: POST /api/tasks
-        await apiClient.post("/tasks", form);
-      }
-      onOpenChange(false);
-      onSaved(); // Gọi hàm refresh lại bảng Kanban bên trang chính
-    } catch (error) {
-      console.error("Error when saving tasks:", error);
-    } finally {
-      setSaving(false);
-    }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 3. Chuyển đổi hàm Xóa sang REST API
-  const handleDelete = async () => {
-    if (!task) return;
-    const taskId = task.id || task._id;
-
-    if (window.confirm("Are you sure you want to delete this task?")) {
-      try {
-        // Gọi API Node.js: DELETE /api/tasks/:id
-        await apiClient.delete(`/tasks/${taskId}`);
-        onOpenChange(false);
-        onSaved(); // Làm mới giao diện Kanban
-      } catch (error) {
-        console.error("Error deleting tasks:", error);
-      }
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{task ? "Edit Task" : "Create Task"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label>Title</Label>
-            <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Task title..." />
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the task..." rows={3} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Priority</Label>
-              <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Category</Label>
-              <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Due Date</Label>
-              <Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
-            </div>
-          </div>
-          <div>
-            <Label>Assigned To (email)</Label>
-            <Input value={form.assigned_to} onChange={e => setForm({ ...form, assigned_to: e.target.value })} placeholder="user@example.com" />
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[500px] overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header Modal */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-800">
+            {mode === 'create' ? 'Create Task' : 'Edit Task'}
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700">✕</button>
         </div>
-        <DialogFooter className="flex justify-between">
-          {task && (
-            <Button variant="ghost" size="sm" className="text-destructive mr-auto" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4 mr-1" /> Delete
-            </Button>
+
+        {/* Body Modal (Form) */}
+        <div className="p-6 overflow-y-auto custom-scrollbar">
+          <form id="task-form" onSubmit={handleSubmit} className="space-y-4">
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Title</label>
+              <input name="title" value={formData.title} onChange={handleChange} placeholder="Task title..." className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" required />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Description</label>
+              <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Describe the task..." rows="3" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"></textarea>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Status</label>
+                <select name="status" value={formData.status} onChange={handleChange} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 bg-white focus:border-blue-500 outline-none">
+                  <option value="backlog">backlog</option>
+                  <option value="pre-production">pre production</option>
+                  <option value="in-production">in production</option>
+                  <option value="transmission">transmission</option>
+                  <option value="post-production">post production</option>
+                  <option value="completed">completed</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Priority</label>
+                <select name="priority" value={formData.priority} onChange={handleChange} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 bg-white focus:border-blue-500 outline-none">
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                  <option value="critical">critical</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Category</label>
+                <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 bg-white focus:border-blue-500 outline-none">
+                  <option value="video">video</option>
+                  <option value="audio">audio</option>
+                  <option value="graphics">graphics</option>
+                  <option value="transmission">transmission</option>
+                  <option value="encoding">encoding</option>
+                  <option value="playout">playout</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Due Date</label>
+                <input type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:border-blue-500 outline-none" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Assigned To (email)</label>
+              <input type="email" name="assignee" value={formData.assignee} onChange={handleChange} placeholder="user@example.com" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:border-blue-500 outline-none" />
+            </div>
+          </form>
+        </div>
+
+        {/* Footer Modal */}
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+          {mode === 'edit' ? (
+            <button type="button" onClick={() => onDelete(task.id)} className="text-sm font-bold text-red-500 hover:text-red-700 flex items-center gap-1.5 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              Delete
+            </button>
+          ) : (
+            <div></div> /* Thẻ rỗng để đẩy nút Create sang bên phải */
           )}
-          <Button onClick={handleSave} disabled={saving || !form.title.trim()}>
-            {saving ? "Saving..." : task ? "Update" : "Create"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          
+          <button type="submit" form="task-form" className={`${mode === 'create' ? 'bg-[#93c5fd] hover:bg-[#60a5fa]' : 'bg-[#3b82f6] hover:bg-[#2563eb]'} text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors shadow-sm`}>
+            {mode === 'create' ? 'Create' : 'Update'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

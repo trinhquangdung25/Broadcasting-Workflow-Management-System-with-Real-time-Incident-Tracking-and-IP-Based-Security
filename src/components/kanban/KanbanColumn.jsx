@@ -1,52 +1,44 @@
 import React from 'react';
-import TaskCard from './TaskCard'; // Lát nữa file TaskCard này sẽ được quét tới
+import TaskCard from './TaskCard';
 
-// Component hiển thị một cột trạng thái trong bảng Kanban (ví dụ: To Do, In Progress...)
-export default function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask }) {
-  // Lọc ra các tác vụ thuộc đúng trạng thái của cột này
-  const filteredTasks = tasks.filter(task => task.status?.toLowerCase() === status?.toLowerCase());
+export default function KanbanColumn({ column, tasks, onDropTask, onTaskClick }) {
+  // Cho phép thả thẻ vào cột này
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
 
-  // Hàm helper để tạo màu sắc viền trên đầu cột cho chuyên nghiệp
-  const getHeaderColor = (colStatus) => {
-    switch (colStatus?.toLowerCase()) {
-      case 'backlog': return 'border-t-slate-400 bg-slate-100 text-slate-700';
-      case 'in_production':
-      case 'progress': 
-        return 'border-t-amber-500 bg-amber-50 text-amber-800';
-      case 'transmission':
-      case 'review': 
-        return 'border-t-blue-500 bg-blue-50 text-blue-800';
-      case 'completed':
-      case 'done': 
-        return 'border-t-emerald-500 bg-emerald-50 text-emerald-800';
-      default: return 'border-t-indigo-500 bg-indigo-50 text-indigo-800';
-    }
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('taskId');
+    onDropTask(taskId, column.id);
   };
 
   return (
-    <div className="flex flex-col w-full min-w-[280px] bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-sm max-h-[calc(100vh-220px)]">
-      {/* Tiêu đề cột */}
-      <div className={`p-3 font-semibold text-sm rounded-t-xl border-t-4 flex items-center justify-between ${getHeaderColor(status)}`}>
-        <span>{title}</span>
-        <span className="px-2 py-0.5 text-xs bg-white/80 rounded-full font-bold shadow-sm border border-slate-200/40">
-          {filteredTasks.length}
+    <div 
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="flex-shrink-0 w-[300px] flex flex-col bg-[#f8f9fc] rounded-2xl border border-slate-200/60 max-h-full"
+    >
+      {/* Header Cột */}
+      <div className="px-4 py-4 border-b border-slate-200/60 flex items-center justify-between sticky top-0 bg-[#f8f9fc] rounded-t-2xl z-10">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${column.color}`}></span>
+          <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest">{column.title}</h3>
+        </div>
+        <span className="text-xs font-bold text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-full">
+          {tasks.length}
         </span>
       </div>
 
-      {/* Vùng chứa các thẻ TaskCard con bên trong cột */}
-      <div className="flex-1 p-3 overflow-y-auto space-y-3 custom-scrollbar">
-        {filteredTasks.length === 0 ? (
-          <div className="h-24 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-xs text-slate-400 font-medium bg-white/40">
-            No tasks in this stage
+      {/* Vùng chứa Thẻ */}
+      <div className="flex-1 p-3 overflow-y-auto custom-scrollbar space-y-3">
+        {tasks.length === 0 ? (
+          <div className="h-24 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-xl">
+            <span className="text-xs font-medium text-slate-400">No tasks</span>
           </div>
         ) : (
-          filteredTasks.map((task) => (
-            <TaskCard 
-              key={task._id || task.id} 
-              task={task} 
-              onEdit={onEditTask} 
-              onDelete={onDeleteTask} 
-            />
+          tasks.map(task => (
+            <TaskCard key={task.id} task={task} onClick={onTaskClick} />
           ))
         )}
       </div>
