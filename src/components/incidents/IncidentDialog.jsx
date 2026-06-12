@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 // 1. Thay thế base44 bằng apiClient
-import { apiClient } from "@/api/base44Client";
+import { apiClient } from "@/api/Client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";

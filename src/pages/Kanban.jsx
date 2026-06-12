@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 // 1. Dùng apiClient và socket thay cho base44
-import { apiClient } from "@/api/base44Client";
+import { apiClient } from "@/api/Client";
 import { io } from "socket.io-client";
 
 import { Plus, Search, Filter } from "lucide-react";

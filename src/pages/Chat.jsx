@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 // 1. Xóa import base44, thêm thư viện của MERN
-import { apiClient } from "@/api/base44Client"; // Lát bạn có thể đổi tên file apiClient sau
+import { apiClient } from "@/api/Client"; // Lát bạn có thể đổi tên file apiClient sau
 import { io } from "socket.io-client";
 import { useAuth } from "@/lib/AuthContext"; // Dùng Context lấy User
 

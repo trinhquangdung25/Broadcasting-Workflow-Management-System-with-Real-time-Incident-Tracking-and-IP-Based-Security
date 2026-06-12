@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 // 1. Thay thế base44 bằng apiClient
-import { apiClient } from "@/api/base44Client";
+import { apiClient } from "@/api/Client";
 import { Plus, Trash2, Shield, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

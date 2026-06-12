@@ -22,4 +22,5 @@ Client.interceptors.request.use(
   }
 );
 
-export default Client;
+
+export { Client as apiClient, Client };
