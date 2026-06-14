@@ -1,18 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import { useIncidents } from '@/lib/IncidentContext'; // <-- Nối ống dẫn nước từ Context tổng
 import IncidentRow from '@/components/incidents/IncidentRow';
 import IncidentDialog from '@/components/incidents/IncidentDialog';
 
-// Data mẫu khớp 100% với ảnh của Base44
-const INITIAL_INCIDENTS = [
-  { id: '1', title: 'Primary Encoder Packet Loss', description: 'Intermittent packet loss detected on primary encoder output. Average 2.3% loss over last 15 minutes.', severity: 'critical', status: 'open', affectedSystem: 'encoder', assignee: 'engineer@broadcast.com', timeAgo: '2 months ago' },
-  { id: '2', title: 'Network Latency Spike', description: 'Network latency between MCR and TX room exceeded 50ms threshold', severity: 'info', status: 'closed', affectedSystem: 'network', assignee: '', timeAgo: '2 months ago' },
-  { id: '3', title: 'Playout Automation Delay', description: 'Playout server showing 200ms delay on scheduled transitions', severity: 'warning', status: 'resolved', affectedSystem: 'playout', assignee: '', timeAgo: '2 months ago' },
-  { id: '4', title: 'Audio Dropout on Feed B', description: 'Brief audio dropouts occurring every ~45 seconds on secondary feed', severity: 'error', status: 'investigating', affectedSystem: 'audio feed', assignee: '', timeAgo: '2 months ago' },
-  { id: '5', title: 'Storage Array Warning', description: 'RAID controller reporting predicted disk failure on bay 7', severity: 'warning', status: 'open', affectedSystem: 'storage', assignee: '', timeAgo: '2 months ago' },
-];
-
 export default function Incidents() {
-  const [incidents, setIncidents] = useState(INITIAL_INCIDENTS);
+  // Rút toàn bộ dữ liệu và hàm thao tác từ kho tổng thay vì lưu cục bộ
+  const { incidents, addIncident, updateIncident, deleteIncident } = useIncidents();
   
   // State quản lý Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,7 +16,7 @@ export default function Incidents() {
   const [editingIncident, setEditingIncident] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Bộ Lọc Thông Minh (Smart Filter)
+  // Bộ Lọc Thông Minh (Smart Filter) chạy trên mảng incidents thực tế từ Context
   const filteredIncidents = useMemo(() => {
     return incidents.filter(inc => {
       const matchSearch = inc.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -34,27 +27,21 @@ export default function Incidents() {
     });
   }, [incidents, searchQuery, severityFilter, statusFilter]);
 
-  // Các hàm tương tác Data
+  // Hàm tương tác Data: Giờ sẽ gọi thẳng hàm của Context để bơm dữ liệu ngược về kho tổng
   const openEditModal = (inc) => setEditingIncident(inc);
   
   const saveIncident = (updatedData) => {
-    setIncidents(prev => prev.map(i => i.id === updatedData.id ? updatedData : i));
+    updateIncident(updatedData); // Bắn dữ liệu về Context
     setEditingIncident(null);
   };
 
-  const deleteIncident = (id) => {
-    setIncidents(prev => prev.filter(i => i.id !== id));
+  const handleDelete = (id) => {
+    deleteIncident(id); // Bắn lệnh xóa về Context
     setEditingIncident(null);
   };
 
   const createIncident = (newData) => {
-    const newInc = {
-      ...newData,
-      id: Date.now().toString(),
-      timeAgo: 'Just now'
-    };
-    // Đẩy sự cố mới lên đầu danh sách
-    setIncidents(prev => [newInc, ...prev]);
+    addIncident(newData); // Bắn ca mới tạo về Context
     setIsCreating(false);
   };
 
@@ -65,7 +52,6 @@ export default function Incidents() {
       <div className="flex items-end justify-between border-b border-slate-200 pb-4 shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <svg className="text-[#e11d48]" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Incident Tracker</h1>
           </div>
           <p className="text-sm font-medium text-slate-500">Real-time incident monitoring & response</p>
@@ -139,7 +125,7 @@ export default function Incidents() {
           incident={editingIncident} 
           onClose={() => setEditingIncident(null)}
           onSave={saveIncident}
-          onDelete={deleteIncident}
+          onDelete={handleDelete}
         />
       )}
 

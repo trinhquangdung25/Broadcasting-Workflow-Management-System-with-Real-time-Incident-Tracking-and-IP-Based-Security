@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import KanbanColumn from '@/components/kanban/KanbanColumn';
 import TaskDialog from '@/components/kanban/TaskDialog';
+import { useWorkflows } from '@/lib/WorkflowContext'; // <-- Lấy dữ liệu từ Context
 
 const COLUMNS = [
   { id: 'backlog', title: 'BACKLOG', color: 'bg-slate-500' },
@@ -11,50 +12,34 @@ const COLUMNS = [
   { id: 'completed', title: 'COMPLETED', color: 'bg-emerald-500' },
 ];
 
-const INITIAL_TASKS = [
-  { id: '1', title: 'Graphics Package Update', description: 'Update lower thirds and scoreboards for new season branding', status: 'backlog', priority: 'medium', category: 'graphics', assignee: 'designer', dueDate: '2026-06-15' },
-  { id: '2', title: 'Playout Server Migration', description: 'Migrate playout automation to new server cluster', status: 'backlog', priority: 'high', category: 'playout', assignee: 'sysadmin', dueDate: '2026-06-20' },
-  { id: '3', title: 'Audio Sync Calibration', description: 'Calibrate audio delay compensation for live transmission', status: 'pre-production', priority: 'critical', category: 'audio', assignee: 'audio', dueDate: '2026-06-12' },
-  { id: '4', title: 'Configure Main Encoder Settings', description: 'Set up H.264 encoding parameters for primary broadcast feed', status: 'in-production', priority: 'high', category: 'encoding', assignee: 'engineer', dueDate: '2026-06-13' },
-  { id: '5', title: 'Satellite Uplink Test', description: 'Verify signal quality on transponder 4B for weekend coverage', status: 'transmission', priority: 'high', category: 'transmission', assignee: 'tx', dueDate: '2026-06-14' },
-];
-
 export default function Kanban() {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  // Lấy data và các hàm kéo thả từ Context
+  const { tasks, addTask, updateTask, deleteTask, moveTask } = useWorkflows();
+  
   const [editingTask, setEditingTask] = useState(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
-  
-  // State mới để lưu từ khóa tìm kiếm
   const [searchQuery, setSearchQuery] = useState(''); 
 
-  const handleDropTask = (taskId, newStatus) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-  };
-
+  const handleDropTask = (taskId, newStatus) => moveTask(taskId, newStatus);
   const openEditModal = (task) => setEditingTask(task);
   
   const saveTask = (updatedTask) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    updateTask(updatedTask);
     setEditingTask(null);
   };
 
-  const deleteTask = (taskId) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+  const handleDelete = (taskId) => {
+    deleteTask(taskId);
     setEditingTask(null);
   };
 
   const handleCreateTask = (newTaskData) => {
-    const newTask = {
-      ...newTaskData,
-      id: Date.now().toString(), 
-    };
-    setTasks(prev => [...prev, newTask]);
+    addTask(newTaskData);
     setIsCreatingTask(false);
   };
 
-  // Logic lọc Task: Kiểm tra xem Title, Description hoặc Category có chứa từ khóa không
   const filteredTasks = tasks.filter(task => {
-    if (!searchQuery) return true; // Nếu ô search trống thì hiện tất cả
+    if (!searchQuery) return true; 
     const lowerQuery = searchQuery.toLowerCase();
     return (
       task.title.toLowerCase().includes(lowerQuery) ||
@@ -73,7 +58,6 @@ export default function Kanban() {
         <div className="flex items-center gap-4">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            {/* Bind state searchQuery vào ô Input */}
             <input 
               type="text" 
               placeholder="Search tasks..." 
@@ -97,7 +81,6 @@ export default function Kanban() {
             <KanbanColumn 
               key={col.id} 
               column={col} 
-              // Truyền filteredTasks thay vì tasks nguyên bản vào cột
               tasks={filteredTasks.filter(t => t.status === col.id)} 
               onDropTask={handleDropTask}
               onTaskClick={openEditModal}
@@ -112,7 +95,7 @@ export default function Kanban() {
           task={editingTask} 
           onClose={() => setEditingTask(null)}
           onSave={saveTask}
-          onDelete={deleteTask}
+          onDelete={handleDelete}
         />
       )}
 
