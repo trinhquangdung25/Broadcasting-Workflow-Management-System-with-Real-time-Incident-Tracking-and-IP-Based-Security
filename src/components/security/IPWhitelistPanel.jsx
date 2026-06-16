@@ -1,162 +1,109 @@
-import { useState, useEffect } from "react";
-// 1. Thay thế base44 bằng apiClient
-import { apiClient } from "@/api/Client";
-import { Plus, Trash2, Shield, Check, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import React, { useState } from 'react';
 
-const DEPARTMENTS = ["engineering", "production", "transmission", "management", "other"];
+const INITIAL_IPS = [
+  { id: '1', ip: '10.0.3.25', label: 'Production Office', dept: 'production', active: true },
+  { id: '2', ip: '10.0.2.50', label: 'Engineering Workstation A', dept: 'engineering', active: true },
+  { id: '3', ip: '192.168.1.200', label: 'Remote VPN - Contractor', dept: 'other', active: false },
+  { id: '4', ip: '10.0.1.100', label: 'Master Control Room', dept: 'transmission', active: true },
+];
 
-export default function IPWhitelistPanel({ isAdmin }) {
-  const [entries, setEntries] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ ip_address: "", label: "", department: "other" });
+export default function IPWhitelistPanel() {
+  const [ips, setIps] = useState(INITIAL_IPS);
+  const [isAdding, setIsAdding] = useState(false);
+  
+  // Form State
+  const [newIp, setNewIp] = useState('192.168.1.1');
+  const [newLabel, setNewLabel] = useState('');
+  const [newDept, setNewDept] = useState('other');
 
-  // 2. Viết lại hàm tải danh sách IP tin cậy bằng REST API (GET)
-  const load = async () => {
-    try {
-      // Gọi API Node.js: GET /api/network/whitelist
-      const response = await apiClient.get("/network/whitelist");
-      setEntries(response.data);
-    } catch (error) {
-      console.error("Lỗi tải danh sách IP Whitelist:", error);
-    } finally {
-      setLoading(false);
-    }
+  const handleDelete = (id) => {
+    setIps(prev => prev.filter(ip => ip.id !== id));
   };
 
-  useEffect(() => { load(); }, []);
-
-  // 3. Viết lại hàm Thêm IP mới bằng REST API (POST)
-  const handleAdd = async () => {
-    if (!form.ip_address.trim() || !form.label.trim()) return;
+  const handleAddIP = (e) => {
+    e.preventDefault();
+    if (!newIp || !newLabel) return;
     
-    try {
-      const payload = { ...form, is_active: true };
-      // Gọi API Node.js: POST /api/network/whitelist
-      // (Backend tự giải mã token lấy email người tạo, không cần gọi hàm auth.me ở đây)
-      await apiClient.post("/network/whitelist", payload);
-      
-      setForm({ ip_address: "", label: "", department: "other" });
-      setDialogOpen(false);
-      load(); // Reload dữ liệu bảng
-    } catch (error) {
-      console.error("Lỗi khi thêm địa chỉ IP:", error);
-    }
-  };
-
-  // 4. Viết lại hàm Bật/Tắt kích hoạt IP bằng REST API (PUT)
-  const handleToggle = async (entry) => {
-    const entryId = entry.id || entry._id;
-    try {
-      // Gọi API Node.js: PUT /api/network/whitelist/:id/toggle
-      await apiClient.put(`/network/whitelist/${entryId}`, { is_active: !entry.is_active });
-      load();
-    } catch (error) {
-      console.error("Lỗi khi thay đổi trạng thái IP:", error);
-    }
-  };
-
-  // 5. Viết lại hàm Xóa IP bằng REST API (DELETE)
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to remove this IP from whitelist?")) {
-      try {
-        // Gọi API Node.js: DELETE /api/network/whitelist/:id
-        await apiClient.delete(`/network/whitelist/${id}`);
-        load();
-      } catch (error) {
-        console.error("Lỗi khi xóa địa chỉ IP:", error);
-      }
-    }
+    const newEntry = {
+      id: Date.now().toString(),
+      ip: newIp,
+      label: newLabel,
+      dept: newDept,
+      active: true
+    };
+    setIps([newEntry, ...ips]);
+    setIsAdding(false);
+    setNewLabel('');
   };
 
   return (
-    <Card className="border-none shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">IP Address Whitelist</CardTitle>
-        {isAdmin && (
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Add IP
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="py-8 text-center text-muted-foreground text-sm">Loading...</div>
-        ) : entries.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            <Shield className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No IP addresses whitelisted yet</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {entries.map(entry => {
-              const entryId = entry.id || entry._id;
-              return (
-                <div key={entryId} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className={`h-2 w-2 rounded-full ${entry.is_active ? "bg-green-500" : "bg-red-500"}`} />
-                  <code className="text-sm font-mono font-medium flex-1">{entry.ip_address}</code>
-                  <span className="text-sm text-muted-foreground hidden sm:inline">{entry.label}</span>
-                  <Badge variant="outline" className="text-[10px] uppercase">
-                    {entry.department}
-                  </Badge>
-                  {isAdmin && (
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleToggle(entry)}>
-                        {entry.is_active ? <X className="h-3.5 w-3.5 text-red-500" /> : <Check className="h-3.5 w-3.5 text-green-500" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(entryId)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="font-bold text-slate-800">IP Address Whitelist</h3>
+        <button onClick={() => setIsAdding(true)} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors">
+          + Add IP
+        </button>
+      </div>
 
-      {/* Hộp thoại thêm mới IP */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add IP Address</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div>
-              <Label>IP Address</Label>
-              <Input value={form.ip_address} onChange={e => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.1" className="font-mono" />
+      <div className="space-y-3">
+        {ips.map((item) => (
+          <div key={item.id} className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className={`w-2 h-2 rounded-full ${item.active ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+              <span className="font-mono font-bold text-slate-700 text-sm">{item.ip}</span>
             </div>
-            <div>
-              <Label>Label</Label>
-              <Input value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Studio A Control Room" />
-            </div>
-            <div>
-              <Label>Department</Label>
-              <Select value={form.department} onValueChange={v => setForm({ ...form, department: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-slate-500">{item.label}</span>
+              <span className="text-[10px] font-bold px-2 py-1 rounded bg-white border border-slate-200 text-slate-600 uppercase tracking-wider w-28 text-center shadow-sm">
+                {item.dept}
+              </span>
+              <div className="flex items-center gap-2 border-l border-slate-200 pl-4 ml-2">
+                <button className="text-emerald-500 hover:text-emerald-600 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+                <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:text-red-600 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleAdd} disabled={!form.ip_address.trim() || !form.label.trim()}>Add</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+        ))}
+      </div>
+
+      {/* MODAL THÊM IP */}
+      {isAdding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[400px] overflow-hidden">
+            <div className="px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-800">Add IP Address</h2>
+              <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+            <div className="p-6 pt-2">
+              <form id="ip-form" onSubmit={handleAddIP} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">IP Address</label>
+                  <input value={newIp} onChange={(e) => setNewIp(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono text-slate-900 focus:border-blue-500 outline-none" required />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Label</label>
+                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. Studio A Control Room" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 outline-none" required />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Department</label>
+                  <select value={newDept} onChange={(e) => setNewDept(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 outline-none">
+                    <option value="engineering">engineering</option>
+                    <option value="production">production</option>
+                    <option value="transmission">transmission</option>
+                    <option value="management">management</option>
+                    <option value="other">other</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+            <div className="px-6 py-4 flex justify-end">
+              <button type="submit" form="ip-form" className="bg-[#93c5fd] hover:bg-[#60a5fa] text-white text-sm font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
